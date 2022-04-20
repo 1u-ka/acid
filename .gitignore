@@ -1,0 +1,13 @@
+__pycache__/
+.cpcache/*
+
+storage/*
+!storage/.keep
+
+bin/*
+!bin/.keep
+
+classes/*
+!classes/.keep
+
+reports/
