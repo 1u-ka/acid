@@ -10,4 +10,6 @@ bin/*
 classes/*
 !classes/.keep
 
+.clj-kondo/*
+
 reports/

@@ -1,4 +1,4 @@
 #!make
 
 default:
-	script/compile.sh
+	src/bash/acid/compile.sh
