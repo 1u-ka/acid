@@ -1,0 +1,47 @@
+(ns acid.hordeq)
+
+(defmacro
+  ^{:doc ""}
+  refreshed!
+  [queue subqueue]
+  `(assoc ~queue
+          (dec (count ~queue))
+          ~subqueue))
+
+(def
+  ^{:doc "."}
+  appended
+  (fn [queue issue]
+    (refreshed! (cons (last queue) issue))))
+
+(defmacro
+  ^{:doc "."}
+  alsoed
+  [queue issue]
+  `(appended ~queue ~issue))
+
+(def
+  ^{:doc "w/ an issue popped off a subqueue"}
+  popped
+  (fn [queue]
+    (if (not (and (= 1 (count queue))
+                  (= 1 (count (last queue)))))
+      (do (refreshed! (pop (last queue)))))))
+
+(def
+  ^{:doc "w/ a reprioritized subqueue"}
+  prepended
+  (fn [queue issue]
+    (refreshed! (conj (last queue) issue))))
+
+(def
+  ^{:doc "w/ a new subqueue"}
+  deepened
+  (fn [queue issue]
+    (conj queue [issue])))
+
+(def
+  ^{:doc "TODOing"}
+  noted
+  (fn [queue issue]
+    (assoc queue 0 (cons (first queue) issue))))

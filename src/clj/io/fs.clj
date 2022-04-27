@@ -2,15 +2,16 @@
   (:require [clojure.java.io :as io])
   (:gen-class))
 
-(defmacro ^{} genfp []
-  (str (get (System/getenv) "HOME")
-       "/.acid.edn"))
+(defmacro
+  ^{}
+  expandfp [filename]
+  `(str (get (System/getenv) "HOME") ~filename))
 
-(def ^{}
+(def
+  ^{}
   read!
-  (fn []
-    (let [default {:self ["hi world!"]}
-          fp      (genfp)]
+  (fn [fp]
+    (let [default {:self ["hi world!"]}]
       (if-not (.exists (io/file fp))
         (do (spit fp default)
             default)
@@ -18,5 +19,5 @@
 
 (def ^{}
   write!
-  (fn [dat]
-    (spit (genfp) dat)))
+  (fn [fp dat]
+    (spit fp dat)))
