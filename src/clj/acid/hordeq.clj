@@ -12,13 +12,19 @@
   ^{:doc "."}
   appended
   (fn [queue issue]
-    (refreshed! (cons (last queue) issue))))
+    (refreshed! queue (cons (last queue) issue))))
 
 (defmacro
   ^{:doc "."}
   alsoed
   [queue issue]
-  `(appended ~queue ~issue))
+  `(appended ~queue (str "also, " ~issue)))
+
+(def
+  ^{}
+  current
+  (fn [queue]
+    (last (last queue))))
 
 (def
   ^{:doc "w/ an issue popped off a subqueue"}
@@ -26,13 +32,13 @@
   (fn [queue]
     (if (not (and (= 1 (count queue))
                   (= 1 (count (last queue)))))
-      (do (refreshed! (pop (last queue)))))))
+      (refreshed! queue (pop (last queue))))))
 
 (def
   ^{:doc "w/ a reprioritized subqueue"}
   prepended
   (fn [queue issue]
-    (refreshed! (conj (last queue) issue))))
+    (refreshed! queue (conj (last queue) issue))))
 
 (def
   ^{:doc "w/ a new subqueue"}

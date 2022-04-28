@@ -20,4 +20,5 @@
 (def ^{}
   write!
   (fn [fp dat]
-    (spit fp dat)))
+    (spit fp dat)
+    dat))

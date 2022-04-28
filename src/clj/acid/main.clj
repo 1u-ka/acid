@@ -8,12 +8,18 @@
 (def
   ^{}
   options
-  [["-f" "--for"         "Manage HORDEQ/stack for another person"]
-   ["-p" "--problem"     "Specify a (sub)problem to reprioritize"]
+  [["-p" "--problem"     "Specify a (sub)problem to reprioritize"]
    ["-d" "--dissolve"    "Pop off the focused problem"]
+   ["-s" "--save"        "Save the solution to a knowledgebase."]
    ["-l" "--all"         "List all problems"]
    ["-c" "--ctx CONTEXT" "Which context to operate on"]
-   ["-s" "--save"        "Save the solution to a knowledgebase."]
+
+   ["-f" "--for PERSON"  "Manage HORDEQ/stack for another person"]
+   ["-i" "--prepend"     "Prepends active queue"]
+   ["-x" "--pop"         "Pops an issue off the active queue"]
+   ["-a" "--also"        "Appends queue with a lower-prioritized issue"]
+   ["-n" "--sub"         "Prepends a new queue as active, prioritized before whatever was already there."]
+   
    ["-h" "--help" "This helps you (heopfully)"]])
 
 (defmulti
@@ -93,45 +99,47 @@
   dissolved
   :hordeq
   [_ opts queue]
-  (let [flags (:options opts)]
-    (cond (:also flags)
-          (hq/alsoed queue (:arguments opts)))
-          (:append flags)
-          (hq/appended queue (:arguments opts))
-          (:peek flags)
-          (hq/peek queue)
-          (:pop flags)
-          (hq/popped queue)
-          (:prepend flags)
-          (hq/prepended queue)
-          (:sub flags)
-          (hq/deepened queue)
-          (:todo flags)
-          (hq/noted queue)))))
+  (let [flags (:options opts)
+        text  (str/join " " (:arguments opts))]
+    (cond (:also flags)    (hq/alsoed queue text)
+          (:append flags)  (hq/appended queue text)
+          (:peek flags)    (hq/current queue)
+          (:pop flags)     (hq/popped queue)
+          (:prepend flags) (hq/prepended queue text)
+          (:sub flags)     (hq/deepened queue text)
+          (:todo flags)    (hq/noted queue text)
+          :else queue)))
 
 (def
   ^{:doc   "Main"
-    :since "0.1.0"}
+    :since "0.1.0"
+    :todos ["two different logic flows with a bunch of
+             ternaries in use for control flow, not good"
+            "get rid of the (sym) 'visual' let binding"]}
   acid!
   (fn [argv]
     (let [opts     (parse-opts argv options)
           cold     (io.fs/read! (genfp (get-in opts [:options :ctx])))
           dat      (if (vector? cold) {:self cold} cold)
-          for      (get-in [:options :for])
-          for      (if for (keyword for) :self)
-          stack    (:self dat)
+          for-arg  (get-in opts [:options :for])
+          for      (if (= nil for-arg) :self (keyword for-arg))
+          stack    (get dat for)
           changed? (-> (fn [e] (contains? (:options opts) e))
-                       (filter [:problem :dissolve])
+                       (filter [:problem :dissolve
+                                :also :append :pop :prepend :sub :todo])
                        (count)
                        (> 0))]
-      (if (get-in opts [:options :help])
+      (if (not (= nil (get-in opts [:options :help])))
         (str "USAGE: acid [OPTION] [problem]\n\nOPTIONS:\n\n"
              (:summary opts))
-        (let [processed (dissolved (if for :hordeq :stack) opts stack)]
+        (let [processed (if (= for :self)
+                          (dissolved :stack opts stack)
+                          (dissolved :hordeq opts (or stack [["init"]])))]
           (if changed?
-            (-> (genfp (get-in opts [:options :ctx]))
-                (io.fs/write! (assoc dat for processed)))
-          processed)))))
+            (do (io.fs/write! (genfp (get-in opts [:options :ctx]))
+                              (assoc dat for processed))
+                (if (= for :self) processed (last processed)))
+            (if (= for :self) processed (last processed))))))))
 
 (def
   ^{}
