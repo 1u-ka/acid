@@ -47,14 +47,14 @@
   #_(sh "clear")
   (if (empty? stack)
     nil
-    (let [general ">"
-          focused "\u001b[31m->>\u001b[0m"
+    (let [general "└──"
+          focused "\u001b[31m└──\u001b[0m"
           total (count stack)]
       (println "  ...")
       (loop [i 0]
         (->> (stack i)
              (format "%s %s" (if (= (inc i) total) focused general))
-             (format "%s%s" (str/join "" (repeat i "  ")))
+             (format "%s%s" (str/join "" (repeat i "    ")))            
              (format "\n%s")
              (println))
         (if (< (inc i) total)
