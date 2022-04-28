@@ -6,6 +6,7 @@ if [ -z "$GRAALVM_HOME" ]; then
 fi
 
 #  Clojure steps
+mkdir -p classes/ bin/
 clj -M -e "(compile 'acid.main)" \
     && java -cp "$(clj -Spath)":classes acid.main
 
