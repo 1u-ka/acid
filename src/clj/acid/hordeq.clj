@@ -12,7 +12,7 @@
   ^{:doc "."}
   appended
   (fn [queue issue]
-    (refreshed! queue (cons (last queue) issue))))
+    (refreshed! queue (vec (cons issue (last queue))))))
 
 (defmacro
   ^{:doc "."}
@@ -32,7 +32,10 @@
   (fn [queue]
     (if (not (and (= 1 (count queue))
                   (= 1 (count (last queue)))))
-      (refreshed! queue (pop (last queue))))))
+      (let [new (refreshed! queue (pop (last queue)))]
+        (if (empty? (last new))
+          (pop new)
+          new)))))
 
 (def
   ^{:doc "w/ a reprioritized subqueue"}
@@ -50,4 +53,4 @@
   ^{:doc "TODOing"}
   noted
   (fn [queue issue]
-    (assoc queue 0 (cons (first queue) issue))))
+    (assoc queue 0 (vec (cons issue (first queue))))))

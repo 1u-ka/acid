@@ -15,10 +15,12 @@
    ["-c" "--ctx CONTEXT" "Which context to operate on"]
 
    ["-f" "--for PERSON"  "Manage HORDEQ/stack for another person"]
+   ["-a" "--append"      "Appends to active queue"]
    ["-i" "--prepend"     "Prepends active queue"]
    ["-x" "--pop"         "Pops an issue off the active queue"]
-   ["-a" "--also"        "Appends queue with a lower-prioritized issue"]
+   ["-o" "--also"        "Appends queue with a lower-prioritized issue"]
    ["-n" "--sub"         "Prepends a new queue as active, prioritized before whatever was already there."]
+   ["-t" "--todo"        "Notes a @todo at the very end of the queue"]
    
    ["-h" "--help" "This helps you (heopfully)"]])
 
