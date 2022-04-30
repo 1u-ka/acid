@@ -1,5 +1,7 @@
 (ns acid.main
   (:require [acid.hordeq :as hq]
+            [acid.knowledgebase :refer [note!]]
+            acid.output
             [clojure.string :as str]
             [clojure.tools.cli :refer [parse-opts]]
             io.fs)
@@ -10,7 +12,7 @@
   options
   [["-p" "--problem"     "Specify a (sub)problem to reprioritize"]
    ["-d" "--dissolve"    "Pop off the focused problem"]
-   ["-s" "--save"        "Save the solution to a knowledgebase."]
+   ["-s" "--save LAST-N" "Save the solution for previous N problems to a ~/knowledgebase-{timestamp}.md file"]
    ["-l" "--all"         "List all problems"]
    ["-c" "--ctx CONTEXT" "Which context to operate on"]
 
@@ -24,49 +26,10 @@
    
    ["-h" "--help" "This helps you (heopfully)"]])
 
-(defmulti
-  ^{}
-  render!
-  (fn [x & _] x))
-
-(defmethod
-  ^{}
-  render!
-  :str
-  [_ data]
-  (println data))
-
-(defmethod
-  ^{:doc      "Renders the focused-in problem stack"
-    :since    "0.1"
-    :arglists '([stack])
-    :return   nil}
-  render!
-  :vec
-  [_ stack]
-  #_(sh "clear")
-  (if (empty? stack)
-    nil
-    (let [general "└──"
-          focused "\u001b[31m└──\u001b[0m"
-          total (count stack)]
-      (println "  ...")
-      (loop [i 0]
-        (->> (stack i)
-             (format "%s %s" (if (= (inc i) total) focused general))
-             (format "%s%s" (str/join "" (repeat i "    ")))            
-             (format "\n%s")
-             (println))
-        (if (< (inc i) total)
-          (recur (inc i))
-          nil)))))
-
 (defmacro
   ^{}
   genfp [& [ctx]]
-  `(io.fs/expandfp (str "/.acid."
-                        (or ~ctx "primary")
-                        ".edn")))
+  `(io.fs/expandfp (str "/.acid." ~ctx ".edn")))
 
 (defmulti
   ^{:doc "?"}
@@ -74,7 +37,7 @@
   (fn [x & _] x))
 
 (defmethod
-  ^{:doc "stack bassed task dissolution"}
+  ^{:doc  "stack bassed task dissolution"}
   dissolved
   :stack
   [_ opts stack]
@@ -113,7 +76,7 @@
           :else queue)))
 
 (def
-  ^{:doc   "Main"
+  ^{:doc   "?"
     :since "0.1.0"
     :todos ["two different logic flows with a bunch of
              ternaries in use for control flow, not good"
@@ -121,7 +84,8 @@
   acid!
   (fn [argv]
     (let [opts     (parse-opts argv options)
-          cold     (io.fs/read! (genfp (get-in opts [:options :ctx])))
+          ctx      (or (get-in opts [:options :ctx]) "primary")
+          cold     (io.fs/read! (genfp ctx))
           dat      (if (vector? cold) {:self cold} cold)
           for-arg  (get-in opts [:options :for])
           for      (if (= nil for-arg) :self (keyword for-arg))
@@ -131,6 +95,16 @@
                                 :also :append :pop :prepend :sub :todo])
                        (count)
                        (> 0))]
+
+      (if (and (get-in opts [:options :save])
+               (or (get-in opts [:options :dissolve])
+                   (get-in opts [:options :pop])))
+        (note! (acid.output/rendered
+                (take-last (read-string (get-in opts [:options :save])) stack))
+               ctx
+               for
+               (str/join " " (:arguments opts))))
+
       (if (not (= nil (get-in opts [:options :help])))
         (str "USAGE: acid [OPTION] [problem]\n\nOPTIONS:\n\n"
              (:summary opts))
@@ -138,7 +112,7 @@
                           (dissolved :stack opts stack)
                           (dissolved :hordeq opts (or stack [["init"]])))]
           (if changed?
-            (do (io.fs/write! (genfp (get-in opts [:options :ctx]))
+            (do (io.fs/write! (genfp ctx)
                               (assoc dat for processed))
                 (if (= for :self) processed (last processed)))
             (if (= for :self) processed (last processed))))))))
@@ -148,8 +122,4 @@
   -main
   (fn [& argv]
     (let [res (acid! (if argv argv '()))]
-      (render! (if (vector? res) :vec :str) res))))
-
-(comment
-  (acid! '("-c acid"))
-  )
+      (acid.output/render! (if (vector? res) :vec :str) res))))
