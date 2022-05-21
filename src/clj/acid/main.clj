@@ -106,12 +106,11 @@
                           (dissolved :stack opts stack)
                           (dissolved :hordeq opts (or stack [["init"]])))]
           (do
-            (if changed?
+            (into [] (take-last 6 (if changed?
               (do (io.fs/write! (genfp ctx)
                                 (assoc dat for processed))
                   (if (= for :self) processed (last processed)))
-              (if (= for :self) processed (last processed)))
-            (into [] (take-last 6 processed))))))))
+              (if (= for :self) processed (last processed)))))))))))
 
 (def
   ^{}
