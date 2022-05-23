@@ -105,12 +105,13 @@
         (let [processed (if (= for :self)
                           (dissolved :stack opts stack)
                           (dissolved :hordeq opts (or stack [["init"]])))]
-          (do
-            (into [] (take-last 6 (if changed?
-              (do (io.fs/write! (genfp ctx)
-                                (assoc dat for processed))
-                  (if (= for :self) processed (last processed)))
-              (if (= for :self) processed (last processed)))))))))))
+          (->> (if changed?
+                 (do (io.fs/write! (genfp ctx)
+                                   (assoc dat for processed))
+                     (if (= for :self) processed (last processed)))
+                 (if (= for :self) processed (last processed)))
+               (take-last 6)
+               (into [])))))))
 
 (def
   ^{}
