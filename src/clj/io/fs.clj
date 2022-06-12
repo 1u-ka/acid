@@ -11,7 +11,7 @@
   ^{}
   read!
   (fn [fp]
-    (let [default {:self ["hi world!"]}]
+    (let [default {:self [["hi world!"]]}]
       (if-not (.exists (io/file fp))
         (do (spit fp default)
             default)
