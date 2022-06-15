@@ -1,11 +1,17 @@
 (ns acid.stack)
 
 (def
+  ^{:todo "move"}
+  index-of
+  (fn [haystack needle]
+    (first (keep-indexed #(if (= %2 needle) %1 nil) haystack))))
+
+(def
   ^{}
   substacked
   (fn [stack]
     (let [selected (last (sort-by count stack))
-          index    (.indexOf stack selected)]
+          index    (index-of stack selected)]
       (prn index)
       [selected index])))
 
