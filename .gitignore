@@ -11,5 +11,6 @@ classes/*
 !classes/.keep
 
 .clj-kondo/*
+.lsp
 
 reports/
