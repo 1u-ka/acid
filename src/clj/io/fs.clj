@@ -2,10 +2,14 @@
   (:require [clojure.java.io :as io])
   (:gen-class))
 
-(defmacro
+(def
   ^{}
-  expandfp [filename]
-  `(str (get (System/getenv) "HOME") ~filename))
+  expandfp
+  (fn
+    ([filename]
+     (str (get (System/getenv) "HOME") filename))
+    ([]
+     (expandfp ""))))
 
 (def
   ^{}
@@ -22,3 +26,20 @@
   (fn [fp dat]
     (spit fp dat)
     dat))
+
+(def
+  ^{}
+  files
+  (fn [path]
+    (->> path
+         (io/file)
+         (.listFiles)
+         (map #(.getPath %)))))
+
+(def
+  ^{}
+  glob
+  (fn [path pattern]
+    (filter (fn [e]
+              (re-find pattern e))
+            (files path))))

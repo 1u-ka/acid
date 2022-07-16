@@ -2,7 +2,7 @@
   (:require io.fs))
 
 (def
-  ^{}
+  ^{:notes ["move to exocortex domain"]}
   note!
   (fn [situation context person solution]
     (->> (format
@@ -30,6 +30,6 @@ Person: %s"
          (spit
           (io.fs/expandfp
            (str "/knowledgebase-"
-                (.format (java.text.SimpleDateFormat. "yy-dd-MM--hh-mm-ss")
+                (.format (java.text.SimpleDateFormat. "yy-MM-dd--hh-mm-ss")
                          (java.util.Date.))
                 ".md"))))))

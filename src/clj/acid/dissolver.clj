@@ -54,8 +54,8 @@
 
 (def
   ^{:doc   "?"
-    :since "0.1.0"
-    :todos ["move the knowledgebase logic out to main"]}
+    :since "?"
+    :notes ["move the knowledgebase logic out to exocortex domain"]}
   dissolve!
   (fn [opts]
     (let [ctx    (or (get-in opts [:options :ctx]) "primary")

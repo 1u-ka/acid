@@ -5,16 +5,9 @@ if [ -z "$GRAALVM_HOME" ]; then
     exit 1
 fi
 
-#  Clojure steps
-mkdir -p bin/ classes/
-
-clj -M -e "(compile 'acid.main)" \
-    && java -cp "$(clj -Spath)":classes acid.main
-
 # GraalVM steps
 "$GRAALVM_HOME/bin/gu" install native-image
 "$GRAALVM_HOME/bin/native-image" \
-    -cp $(clj -Spath):classes \
     -H:Name=bin/acid \
     -H:+ReportExceptionStackTraces \
     --initialize-at-build-time \
@@ -22,4 +15,5 @@ clj -M -e "(compile 'acid.main)" \
     --no-fallback \
     --no-server \
     "-J-Xmx3g" \
-    acid.main
+    -jar target/acid.main-0-standalone.jar \
+    bin/acid

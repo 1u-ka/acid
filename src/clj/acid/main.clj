@@ -1,13 +1,15 @@
 (ns acid.main
-  (:require acid.output
-
-            [acid.dissolver :refer [dissolve!]]
-            [clojure.string :as str]
+  (:require [acid.dissolver    :refer [dissolve!]]
+            [acid.output]
+            [clojure.string    :as str]
             [clojure.tools.cli :refer [parse-opts]]
-
             [exocortex.buffer]
-            io.fs)
-  (:import [exocortex.buffer Buffer])
+            [exocortex.cypher  :refer [close-session make-session]]
+            [io.fs]
+            [licensing.distributable])
+  (:import [exocortex.buffer        Buffer]
+           [exocortex.cypher        Cypher]
+           [licensing.distributable License])
   (:gen-class))
 
 (defmacro
@@ -36,15 +38,28 @@
                               ["-n" "--sub"         "Prepends a new queue as active, prioritized before whatever was already there."]
                               ["-t" "--todo"        "Notes a @todo at the very end of the queue"]
 
-                              ["-h" "--help" "This helps you (heopfully)"]]) 
-          buffer (new Buffer (-> (get-in [:options :context] opts)
-                              (or "primary")
-                              (str ".buffer")
-                              (genfp)))]
+                              ["-h" "--help" "This helps you (heopfully)"]])
+          license (new License)]
 
-      ;; exocortex
-      (.push! buffer (select-keys opts [:options :arguments])) 
-      
+      ;; buffer
+      (if (.permits? license "event-buffering")
+        (let [buffer (new Buffer (or (get-in [:options :context] opts) "primary"))]
+          (if (nil? (get-in [:options :for] opts))
+            (do
+              (.init! buffer)
+              (.push! buffer (let [event (select-keys opts [:options :arguments])]
+                               (->> (:arguments event)
+                                    (str/join " ")
+                                    (assoc event :arguments))))))))
+
+      ;; cypher
+      (if (.permits? license "knowledgebase-graph-synchronization")
+        (let [cypher (new Cypher (make-session))]
+          (if-not (.offline? cypher)
+            (do
+              (println "Cypher online, synchronizing event stream... \n")))
+          (close-session)))
+
       ;; dissolver
       (let [res (dissolve! opts)]
         (acid.output/render! (if (vector? res) :vec :str) res)))))
