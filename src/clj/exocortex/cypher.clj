@@ -4,24 +4,27 @@
   (:import (java.net URI))
   (:gen-class))
 
+(def session-enabled (= "true" (System/getenv "ACID_CYPHER_SYNC")))
+
 (def
   ^{}
   db
   (atom
-   (neo/connect
-    (new URI "bolt://localhost:7687")
-    "neo4j"
-    "neo4java")))
+   (if session-enabled
+     (neo/connect
+      (new URI "bolt://localhost:7687")
+      "neo4j"
+      "neo4java"))))
 
 (def
   ^{}
-  make-session
+  session-make
   (fn []
     (neo/get-session @db)))
 
 (def
   ^{}
-  close-session
+  session-close
   (fn []
     (neo/disconnect @db)))
 

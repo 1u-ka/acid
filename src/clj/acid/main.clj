@@ -4,7 +4,9 @@
             [clojure.string    :as str]
             [clojure.tools.cli :refer [parse-opts]]
             [exocortex.buffer]
-            [exocortex.cypher  :refer [close-session make-session]]
+            [exocortex.cypher  :refer [session-enabled
+                                       session-make
+                                       session-close]]
             [io.fs]
             [licensing.distributable])
   (:import [exocortex.buffer        Buffer]
@@ -53,12 +55,14 @@
                                     (assoc event :arguments))))))))
 
       ;; cypher
-      (if (.permits? license "knowledgebase-graph-synchronization")
-        (let [cypher (new Cypher (make-session))]
+      (if (and
+           session-enabled
+           (.permits? license "knowledgebase-graph-synchronization"))
+        (let [cypher (new Cypher (session-make))]
           (if-not (.offline? cypher)
             (do
               (println "Cypher online, synchronizing event stream... \n")))
-          (close-session)))
+          (session-close)))
 
       ;; dissolver
       (let [res (dissolve! opts)]
