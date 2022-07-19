@@ -22,28 +22,23 @@
 
 (def
   ^{}
-  -main
-  (fn [& argv]
-    (let [opts   (parse-opts (if argv argv '())
-                             [["-p" "--problem"     "Specify a (sub)problem to reprioritize"]
-                              ["-d" "--dissolve"    "Pop off the focused problem"]
+  deduce
+  (fn [acc opts]
+    (let [license        (new License)
 
-                              ["-s" "--save LAST-N" "Save the solution for previous N problems to a ~/knowledgebase-{timestamp}.md file"]
+          cypher-enabled (and
+                          session-enabled
+                          (.permits? license "knowledgebase-graph-synchronization"))
 
-                              ["-c" "--ctx CONTEXT" "Which context to operate on"]
+          cypher         (if cypher-enabled
+                           (new Cypher (session-make))
+                           nil)]
 
-                              ["-f" "--for PERSON"  "Manage HORDEQ/stack for another person"]
-                              ["-a" "--append"      "Appends to active queue"]
-                              ["-i" "--prepend"     "Prepends active queue"]
-                              ["-x" "--pop"         "Pops an issue off the active queue"]
-                              ["-o" "--also"        "Appends queue with a lower-prioritized issue"]
-                              ["-n" "--sub"         "Prepends a new queue as active, prioritized before whatever was already there."]
-                              ["-t" "--todo"        "Notes a @todo at the very end of the queue"]
+      (if (and cypher-enabled
+               (get-in [:options :search] opts))
+        (reduced (.search cypher (opts :arguments))))
 
-                              ["-h" "--help" "This helps you (heopfully)"]])
-          license (new License)]
-
-      ;; buffer
+         ;; buffer
       (if (.permits? license "event-buffering")
         (let [buffer (new Buffer (or (get-in [:options :context] opts) "primary"))]
           (if (nil? (get-in [:options :for] opts))
@@ -54,16 +49,48 @@
                                     (str/join " ")
                                     (assoc event :arguments))))))))
 
-      ;; cypher
-      (if (and
-           session-enabled
-           (.permits? license "knowledgebase-graph-synchronization"))
-        (let [cypher (new Cypher (session-make))]
-          (if-not (.offline? cypher)
-            (do
-              (println "Cypher online, synchronizing event stream... \n")))
-          (session-close)))
+         ;; cypher 
+      (if cypher-enabled
+        (if-not (.offline? cypher)
+          (do
+            (println "Cypher online, synchronizing event stream... \n")))
+        (session-close))
 
-      ;; dissolver
+         ;; dissolver
       (let [res (dissolve! opts)]
         (acid.output/render! (if (vector? res) :vec :str) res)))))
+
+(def
+  ^{}
+  -main
+  (fn [& argv]
+    (reduce
+     deduce
+     nil
+     [(parse-opts (if argv argv '())
+                  [["-p" "--problem"     "Specify a (sub)problem to reprioritize"]
+                   ["-d" "--dissolve"    "Pop off the focused problem"]
+
+                   ["-s" "--save LAST-N" "Save the solution for previous N problems to a ~/knowledgebase-{timestamp}.md file"]
+
+                   ["-c" "--ctx CONTEXT" "Which context to operate on"]
+
+                   ["-f" "--for PERSON"  "Manage HORDEQ/stack for another person"]
+                   ["-a" "--append"      "Appends to active queue"]
+                   ["-i" "--prepend"     "Prepends active queue"]
+                   ["-x" "--pop"         "Pops an issue off the active queue"]
+                   ["-o" "--also"        "Appends queue with a lower-prioritized issue"]
+                   ["-n" "--sub"         "Prepends a new queue as active, prioritized before whatever was already there."]
+                   ["-t" "--todo"        "Notes a @todo at the very end of the queue"]
+
+                   ["-h" "--help" "This helps you (heopfully)"]])])))
+
+(comment
+  (reduce
+   (fn [acc passed-opts]
+     (if-not (:search passed-opts)
+       (reduced true))
+     )
+   nil
+   {:options {:problem true} :arguments "what"}) 
+  )

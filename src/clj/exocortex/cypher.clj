@@ -26,7 +26,7 @@
   ^{}
   session-close
   (fn []
-    (neo/disconnect @db)))
+    (if @db (neo/disconnect @db) @db)))
 
 (defprotocol CypherProtocol
 
