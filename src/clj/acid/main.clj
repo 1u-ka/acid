@@ -34,26 +34,25 @@
                            (new Cypher (session-make))
                            nil)]
 
-      (if (and cypher-enabled
-               (get-in [:options :search] opts))
+      (when (and cypher-enabled
+                 (get-in opts [:options :search]))
         (reduced (.search cypher (opts :arguments))))
 
-         ;; buffer
-      (if (.permits? license "event-buffering")
-        (let [buffer (new Buffer (or (get-in [:options :context] opts) "primary"))]
-          (if (nil? (get-in [:options :for] opts))
-            (do
-              (.init! buffer)
-              (.push! buffer (let [event (select-keys opts [:options :arguments])]
-                               (->> (:arguments event)
-                                    (str/join " ")
-                                    (assoc event :arguments))))))))
+      ;; buffer
+      (when (.permits? license "event-buffering")
+        (let [buffer (new Buffer (or (get-in opts [:options :ctx]) "primary"))]
+          (when (nil? (get-in opts [:options :for]))
 
-         ;; cypher 
-      (if cypher-enabled
-        (if-not (.offline? cypher)
-          (do
-            (println "Cypher online, synchronizing event stream... \n")))
+            (.init! buffer)
+            (.push! buffer (let [event (select-keys opts [:options :arguments])]
+                             (->> (:arguments event)
+                                  (str/join " ")
+                                  (assoc event :arguments)))))))
+
+      ;; cypher
+      (when cypher-enabled
+        (when-not (.offline? cypher)
+          (println "Cypher online, synchronizing event stream... \n"))
         (session-close))
 
          ;; dissolver
