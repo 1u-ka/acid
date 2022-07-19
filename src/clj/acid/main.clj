@@ -22,8 +22,8 @@
 
 (def
   ^{}
-  deduce
-  (fn [acc opts]
+  switch
+  (fn [opts]
     (let [license        (new License)
 
           cypher-enabled (and
@@ -34,62 +34,83 @@
                            (new Cypher (session-make))
                            nil)]
 
-      (when (and cypher-enabled
-                 (get-in opts [:options :search]))
-        (reduced (.search cypher (opts :arguments))))
+      (cond
+        (and cypher-enabled
+             (get-in opts [:options :search]))
+        (do
+          (reduced (.search cypher (opts :arguments))))
+        
+        :else
+        (do
+          ;; buffer
+          (if (.permits? license "event-buffering")
+            (let [buffer (new Buffer (or (get-in opts [:options :ctx]) "primary"))]
+              (when (nil? (get-in opts [:options :for]))
 
-      ;; buffer
-      (when (.permits? license "event-buffering")
-        (let [buffer (new Buffer (or (get-in opts [:options :ctx]) "primary"))]
-          (when (nil? (get-in opts [:options :for]))
+                (.init! buffer)
+                (.push! buffer (let [event (select-keys opts [:options :arguments])]
+                                 (->> (:arguments event)
+                                      (str/join " ")
+                                      (assoc event :arguments)))))))
 
-            (.init! buffer)
-            (.push! buffer (let [event (select-keys opts [:options :arguments])]
-                             (->> (:arguments event)
-                                  (str/join " ")
-                                  (assoc event :arguments)))))))
+          ;; cypher
+          (if cypher-enabled
+            (do
+              (if-not (.offline? cypher)
+                (println "Cypher online, synchronizing event stream... \n"))
+              (session-close)))
 
-      ;; cypher
-      (when cypher-enabled
-        (when-not (.offline? cypher)
-          (println "Cypher online, synchronizing event stream... \n"))
-        (session-close))
-
-         ;; dissolver
-      (let [res (dissolve! opts)]
-        (acid.output/render! (if (vector? res) :vec :str) res)))))
+           ;; dissolver
+          (let [res (dissolve! opts)]
+            (acid.output/render! (if (vector? res) :vec :str) res)))))))
 
 (def
   ^{}
   -main
-  (fn [& argv]
-    (reduce
-     deduce
-     nil
-     [(parse-opts (if argv argv '())
-                  [["-p" "--problem"     "Specify a (sub)problem to reprioritize"]
-                   ["-d" "--dissolve"    "Pop off the focused problem"]
+  (fn [& argv] 
+    (switch (parse-opts (if argv argv '())
+                        [["-p" "--problem"      "Specify a (sub)problem to reprioritize"]
+                         ["-d" "--dissolve"     "Pop off the focused problem"]
 
-                   ["-s" "--save LAST-N" "Save the solution for previous N problems to a ~/knowledgebase-{timestamp}.md file"]
+                         ["-s" "--save LAST-N"  "Save the solution for previous N problems to a ~/knowledgebase-{timestamp}.md file"]
 
-                   ["-c" "--ctx CONTEXT" "Which context to operate on"]
+                         ["-c" "--ctx CONTEXT"  "Which context to operate on"]
 
-                   ["-f" "--for PERSON"  "Manage HORDEQ/stack for another person"]
-                   ["-a" "--append"      "Appends to active queue"]
-                   ["-i" "--prepend"     "Prepends active queue"]
-                   ["-x" "--pop"         "Pops an issue off the active queue"]
-                   ["-o" "--also"        "Appends queue with a lower-prioritized issue"]
-                   ["-n" "--sub"         "Prepends a new queue as active, prioritized before whatever was already there."]
-                   ["-t" "--todo"        "Notes a @todo at the very end of the queue"]
+                         ["-f" "--for PERSON"   "Manage HORDEQ/stack for another person"]
+                         ["-a" "--append"       "Appends to active queue"]
+                         ["-i" "--prepend"      "Prepends active queue"]
+                         ["-x" "--pop"          "Pops an issue off the active queue"]
+                         ["-o" "--also"         "Appends queue with a lower-prioritized issue"]
+                         ["-n" "--sub"          "Prepends a new queue as active, prioritized before whatever was already there."]
+                         ["-t" "--todo"         "Notes a @todo at the very end of the queue"]
 
-                   ["-h" "--help" "This helps you (heopfully)"]])])))
+                         [nil  "--search QUERY" "A search"]
+
+                         ["-h" "--help"         "This helps you (heopfully)"]]))))
 
 (comment
-  (reduce
-   (fn [acc passed-opts]
-     (if-not (:search passed-opts)
-       (reduced true))
-     )
-   nil
-   {:options {:problem true} :arguments "what"}) 
+  
+  ;;note the return from f must be from reduced for reduce to terminate early.
+
+;;no early termination as the return of f is nil
+(reduce (fn f [a b]
+          (if (> b 2)
+            (reduced "Done early!"))
+          
+          (reduced "What")
+          ) [1 2 3 4 5])
+;;2
+;;3
+;;4
+;;5
+;;=> nil
+
+;;early termination as the return of f is "Done early!" wrapped in a reduce object.
+(reduce (fn f [a b]
+          (if (> b 2)
+            (reduced "Done early!")
+            (println b))) [1 2 3 4 5])
+;;2
+;;=> "Done early!"
+
   )

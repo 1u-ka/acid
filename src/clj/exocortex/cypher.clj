@@ -32,7 +32,8 @@
 
   (ping- [this] "")
   (offline? [this] "")
-  (online? [this] ""))
+  (online? [this] "")
+  (search [this query] ""))
 
 (deftype Cypher [session]
 
@@ -56,7 +57,12 @@
   (online?
    ^{}
    [this]
-   (not (offline? this))))
+   (not (offline? this)))
+  
+  (search
+   ^{}
+   [this query]
+   (prn query)))
 
 #_(neo/defquery
     create-user
