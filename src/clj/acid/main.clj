@@ -32,17 +32,30 @@
 
           cypher         (if cypher-enabled
                            (new Cypher (session-make))
-                           nil)]
-
+                           nil)
+          
+          search-query   (get-in opts [:options :search])]
       (cond
-        (and cypher-enabled
-             (get-in opts [:options :search]))
+        (and search-query
+             (not cypher-enabled))
         (do
-          (reduced (.search cypher (opts :arguments))))
-        
+          (println "Cannot search, graphdb not enabled."))
+
+        (and search-query
+             cypher-enabled)
+        (do
+          (->> (.search cypher search-query)
+               (map vals)
+               (into [])
+               (first)
+               (map #(:problem %))
+               (into [])
+               (acid.output/render! :vec))
+          (session-close))
+
         :else
         (do
-          ;; buffer
+          ; buffer
           (if (.permits? license "event-buffering")
             (let [buffer (new Buffer (or (get-in opts [:options :ctx]) "primary"))]
               (when (nil? (get-in opts [:options :for]))
@@ -53,14 +66,14 @@
                                       (str/join " ")
                                       (assoc event :arguments)))))))
 
-          ;; cypher
+          ; cypher
           (if cypher-enabled
             (do
               (if-not (.offline? cypher)
                 (println "Cypher online, synchronizing event stream... \n"))
               (session-close)))
 
-           ;; dissolver
+          ; dissolver
           (let [res (dissolve! opts)]
             (acid.output/render! (if (vector? res) :vec :str) res)))))))
 
@@ -88,29 +101,3 @@
 
                          ["-h" "--help"         "This helps you (heopfully)"]]))))
 
-(comment
-  
-  ;;note the return from f must be from reduced for reduce to terminate early.
-
-;;no early termination as the return of f is nil
-(reduce (fn f [a b]
-          (if (> b 2)
-            (reduced "Done early!"))
-          
-          (reduced "What")
-          ) [1 2 3 4 5])
-;;2
-;;3
-;;4
-;;5
-;;=> nil
-
-;;early termination as the return of f is "Done early!" wrapped in a reduce object.
-(reduce (fn f [a b]
-          (if (> b 2)
-            (reduced "Done early!")
-            (println b))) [1 2 3 4 5])
-;;2
-;;=> "Done early!"
-
-  )

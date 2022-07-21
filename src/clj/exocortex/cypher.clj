@@ -1,7 +1,9 @@
 (ns exocortex.cypher
   (:require [clojure.string :as str]
             [neo4j-clj.core :as neo])
-  (:import (java.net URI))
+  (:import (org.neo4j.driver.internal.logging ConsoleLogging)
+           (java.net URI)
+           (java.util.logging Level))
   (:gen-class))
 
 (def session-enabled (= "true" (System/getenv "ACID_CYPHER_SYNC")))
@@ -14,7 +16,8 @@
      (neo/connect
       (new URI "bolt://localhost:7687")
       "neo4j"
-      "neo4java"))))
+      "neo4clojure"
+      {:logging (new ConsoleLogging Level/OFF)}))))
 
 (def
   ^{}
@@ -53,20 +56,19 @@
       (= nil (ping- this))
       (catch Exception e
         (str/includes? (.getMessage e) "connection"))))
-  
+
   (online?
-   ^{}
-   [this]
-   (not (offline? this)))
-  
+    ^{}
+    [this]
+    (not (offline? this)))
+
   (search
-   ^{}
-   [this query]
-   (prn query)))
-
-#_(neo/defquery
-    create-user
-    "CREATE (u:user $user)")
-
-#_(neo/defquery list-users
-    "MATCH (u:user) RETURN u as user")
+    ^{}
+    [this query]
+    ((neo/create-query
+      "match (n:entry)-[r:BLOCKS]->(p)-[gr:BLOCKS]->(gp)
+       where n.problem contains $input
+       return gp, p, n
+       limit 5")
+     session
+     {:input query})))
