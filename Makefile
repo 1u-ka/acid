@@ -18,4 +18,5 @@ bin:
 	src/bash/acid/compile.sh
 
 install:
-	cp bin/acid ~/.local/bin/acid
+	cp bin/acid ~/.local/bin/acid && \
+	cp bin/acid.jar ~/.local/bin/acid.jar
