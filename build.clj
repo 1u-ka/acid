@@ -5,7 +5,7 @@
 (def version (format "1.2.%s" (b/git-count-revs nil)))
 (def class-dir "target/classes")
 (def basis (b/create-basis {:project "deps.edn"}))
-(def uber-file "bin/acid" #_(format "target/%s-%s-standalone.jar" (name prog) "0" #_version))
+(def uber-file "bin/acid.jar" #_(format "target/%s-%s-standalone.jar" (name prog) "0" #_version))
 
 (defn clean [_]
   (b/delete {:path "target"}))

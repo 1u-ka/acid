@@ -34,7 +34,7 @@
     (->> path
          (io/file)
          (.listFiles)
-         (map #(.getPath %)))))
+         (map #(.getPath ^java.io.File %)))))
 
 (def
   ^{}

@@ -6,13 +6,17 @@
            (java.util.logging Level))
   (:gen-class))
 
-(def session-enabled (= "true" (System/getenv "ACID_CYPHER_SYNC")))
+(def
+  ^{}
+  session-enabled?
+  (fn []
+    (= "true" (System/getenv "GRAPHDB"))))
 
 (def
   ^{}
   db
   (atom
-   (if session-enabled
+   (if (session-enabled?)
      (neo/connect
       (new URI "bolt://localhost:7687")
       "neo4j"
@@ -66,9 +70,10 @@
     ^{}
     [this query]
     ((neo/create-query
-      "match (n:entry)-[r:BLOCKS]->(p)-[gr:BLOCKS]->(gp)
+      "match (n:entry)-[r:BLOCKS*0..5]->(p)
        where n.problem contains $input
-       return gp, p, n
-       limit 5")
+
+       return distinct p"
+      )
      session
      {:input query})))

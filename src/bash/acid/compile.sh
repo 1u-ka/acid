@@ -15,5 +15,5 @@ fi
     --no-fallback \
     --no-server \
     "-J-Xmx3g" \
-    -jar target/acid.main-0-standalone.jar \
+    -jar bin/acid.jar \
     bin/acid

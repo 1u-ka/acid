@@ -4,7 +4,7 @@
             [clojure.string    :as str]
             [clojure.tools.cli :refer [parse-opts]]
             [exocortex.buffer]
-            [exocortex.cypher  :refer [session-enabled
+            [exocortex.cypher  :refer [session-enabled?
                                        session-make
                                        session-close]]
             [io.fs]
@@ -27,7 +27,7 @@
     (let [license        (new License)
 
           cypher-enabled (and
-                          session-enabled
+                          (session-enabled?)
                           (.permits? license "knowledgebase-graph-synchronization"))
 
           cypher         (if cypher-enabled
@@ -35,6 +35,7 @@
                            nil)
           
           search-query   (get-in opts [:options :search])]
+
       (cond
         (and search-query
              (not cypher-enabled))
@@ -46,9 +47,7 @@
         (do
           (->> (.search cypher search-query)
                (map vals)
-               (into [])
-               (first)
-               (map #(:problem %))
+               (map #(:problem (first %)))
                (into [])
                (acid.output/render! :vec))
           (session-close))
