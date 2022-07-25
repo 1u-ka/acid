@@ -1,16 +1,17 @@
 (ns acid.main
   (:require [acid.dissolver    :refer [dissolve!]]
+            ;[acid.graph]
             [acid.output]
             [clojure.string    :as str]
             [clojure.tools.cli :refer [parse-opts]]
             [exocortex.buffer]
-            [exocortex.cypher  :refer [session-enabled?
+            [io.cypher         :refer [session-enabled?
                                        session-make
                                        session-close]]
             [io.fs]
             [licensing.distributable])
-  (:import [exocortex.buffer        Buffer]
-           [exocortex.cypher        Cypher]
+  (:import [io.cypher               Cypher]
+           [exocortex.buffer        Buffer]
            [licensing.distributable License])
   (:gen-class))
 
@@ -26,6 +27,8 @@
   (fn [opts]
     (let [license        (new License)
 
+          buffer         (new Buffer (or (get-in opts [:options :ctx]) "primary"))
+          buffer-enabled (.permits? license "event-buffering")
           cypher-enabled (and
                           (session-enabled?)
                           (.permits? license "knowledgebase-graph-synchronization"))
@@ -33,48 +36,57 @@
           cypher         (if cypher-enabled
                            (new Cypher (session-make))
                            nil)
-          
+
           search-query   (get-in opts [:options :search])]
 
-      (cond
-        (and search-query
-             (not cypher-enabled))
-        (do
-          (println "Cannot search, graphdb not enabled."))
+      ; buffer
+      (when (nil? (get-in opts [:options :for]))
+        (.init! buffer)
+        (.push! buffer (let [event (select-keys opts [:options :arguments])]
+                         (->> (:arguments event)
+                              (str/join " ")
+                              (assoc event :arguments)))))
 
-        (and search-query
-             cypher-enabled)
-        (do
-          (->> (.search cypher search-query)
-               (map vals)
-               (map #(:problem (first %)))
-               (into [])
-               (acid.output/render! :vec))
-          (session-close))
+      (def result
+        (cond
+          (and (not= nil search-query)
+               (nil? cypher))
+          (do
+            (println "Cannot search, graphdb not enabled."))
 
-        :else
-        (do
-          ; buffer
-          (if (.permits? license "event-buffering")
-            (let [buffer (new Buffer (or (get-in opts [:options :ctx]) "primary"))]
-              (when (nil? (get-in opts [:options :for]))
+          (and (not= nil search-query)
+               (not (nil? cypher)))
+          (do
+            (->> (.exec cypher acid.graph/search search-query)
+                 (map vals)
+                 (map #(:problem (first %)))
+                 (into [])
+                 (acid.output/render! :vec)))
 
-                (.init! buffer)
-                (.push! buffer (let [event (select-keys opts [:options :arguments])]
-                                 (->> (:arguments event)
-                                      (str/join " ")
-                                      (assoc event :arguments)))))))
+        ; cypher 
+          (and (not (nil? cypher))
+               (not (.offline? cypher))
+               false
+               #_there-is-something-to-sync)
+          (do
+            (println "Cypher online, synchronizing event stream... \n")
+            (loop [buff (.read buffer)]
+              (prn (first buff))
+              (if (next buff)
+                (recur (lazy-seq (next buff))))))
 
-          ; cypher
-          (if cypher-enabled
-            (do
-              (if-not (.offline? cypher)
-                (println "Cypher online, synchronizing event stream... \n"))
-              (session-close)))
-
+          :else
+          (do
           ; dissolver
-          (let [res (dissolve! opts)]
-            (acid.output/render! (if (vector? res) :vec :str) res)))))))
+            (let [res (dissolve! opts)]
+              (acid.output/render! (if (vector? res) :vec :str) res)))))
+
+      ; cleanup
+      (if (not (nil? cypher))
+        (session-close))
+
+      ; return
+      result)))
 
 (def
   ^{}
@@ -100,3 +112,6 @@
 
                          ["-h" "--help"         "This helps you (heopfully)"]]))))
 
+(comment 
+  
+  )

@@ -1,10 +1,13 @@
 (ns acid.dissolver
-  (:require [acid.hordeq :as hq]
-            [acid.knowledgebase :refer [note!]] 
+  (:require [acid.graph]
+            [acid.hordeq :as hq]
+            [acid.knowledgebase :refer [note!]]
             acid.output
             [acid.stack :as stack]
             [clojure.string :as str]
+            [io.cypher :refer [session-make]]
             io.fs)
+  (:import [io.cypher Cypher])
   (:gen-class))
 
 (defmacro
@@ -19,25 +22,10 @@
   (fn [x & _] x))
 
 (defmethod
-  ^{:doc  "stack bassed task dissolution"}
-  dissolved
-  :stack
-  [_ opts stack]
-  (let [flags (:options opts)]
-    (cond (:problem flags)  (stack/pushed stack (str/join " " (:arguments opts)))
-          (:dissolve flags) (stack/popped stack)
-          (:todo flags)     (conj stack [(str/join " " (:arguments opts))]) ;; @todo   DRY!
-          :else             stack)))
-
-(defmethod
   ^{:doc  "task dissolution based on a hierarchical
            output-restricted double ended queue data structure"
 
-    :todo "shorten the structural pattern segment by going
-           through the flags then casting its key to a
-           symbol, like so:
-
-           (symbol (str \"ns/\" (str flag))))"}
+    :todos nil}
   dissolved
   :hordeq
   [_ opts queue]
@@ -51,6 +39,29 @@
           (:sub flags)     (hq/deepened queue text)
           (:todo flags)    (hq/noted queue text)
           :else queue)))
+
+(defmethod
+  ^{}
+  dissolved
+  :graph
+  [_ opts]
+  (let [flags (:options opts)
+        graph (new Cypher (session-make))
+        text  (:arguments opts)]
+    (cond (:problem flags)  (acid.graph/pushed text)
+          (:dissolve flags) (acid.graph/popped text)
+          (:todo flags)     (acid.graph/noted  text))))
+
+(defmethod
+  ^{:doc  "stack bassed task dissolution"}
+  dissolved
+  :stack
+  [_ opts stack]
+  (let [flags (:options opts)]
+    (cond (:problem flags)  (stack/pushed stack (str/join " " (:arguments opts)))
+          (:dissolve flags) (stack/popped stack)
+          (:todo flags)     (conj stack [(str/join " " (:arguments opts))]) ;; @todo   DRY!
+          :else             stack)))
 
 (def
   ^{:doc   "?"

@@ -1,4 +1,4 @@
-(ns exocortex.cypher
+(ns io.cypher
   (:require [clojure.string :as str]
             [neo4j-clj.core :as neo])
   (:import (org.neo4j.driver.internal.logging ConsoleLogging)
@@ -40,7 +40,7 @@
   (ping- [this] "")
   (offline? [this] "")
   (online? [this] "")
-  (search [this query] ""))
+  (exec [this query params] ""))
 
 (deftype Cypher [session]
 
@@ -66,14 +66,9 @@
     [this]
     (not (offline? this)))
 
-  (search
+  (exec
     ^{}
-    [this query]
-    ((neo/create-query
-      "match (n:entry)-[r:BLOCKS*0..5]->(p)
-       where n.problem contains $input
-
-       return distinct p"
-      )
+    [this query params]
+    (query
      session
-     {:input query})))
+     {:input params})))
