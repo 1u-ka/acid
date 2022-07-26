@@ -16,6 +16,7 @@
 
 (defprotocol FilesystemLogger
   (clear! [this])
+  (is-empty? [this])
   (exists? [this])
   (file-list [this])
   (push! [this event])
@@ -28,15 +29,27 @@
 
   FilesystemLogger
 
+  (is-empty?
+   [this]
+   (let [files (file-list this)]
+     (cond
+       (empty? files) true
+       :else (reduce
+              (fn [acc el]
+                (if (not (str/blank? (slurp el)))
+                  (reduced false)))
+              true
+              (file-list this)))))
+
   (exists?
     ^{:private true}
     [this]
     (< 0 (count (file-list this))))
 
   (file-list
-   ^{:private true}
-   [this]
-   (glob (expandfp) (re-pattern (str ".acid." context ".buffer.\\d{4}-\\d{2}.edn"))))
+    ^{:private true}
+    [this]
+    (glob (expandfp) (re-pattern (str ".acid." context ".buffer.\\d{4}-\\d{2}.edn"))))
 
   (clear!
     ^{:todos ["remove all buffer-files found for this context
@@ -61,20 +74,22 @@
               :append true))))
 
   (read
-   ^{:todos ["return a lazy sequence of buffer-file
+    ^{:todos ["return a lazy sequence of buffer-file
               contents parsed via read-string"]}
-   [this]
-   (flatten
-    (map (fn [e]
-           (as-> (slurp e) it
-             (str/split it #"\n")
-             (lazy-seq it)
-             (map read-string it)))
-         (file-list this))))
+    [this]
+    (flatten
+     (map (fn [e]
+            (as-> (slurp e) it
+              (str/split it #"\n")
+              (lazy-seq it)
+              (map read-string it)))
+          (file-list this))))
 
   (init!
     ^{:notes ["to avoid re-creation during neo4j synchronization
-              ensure at least one empty seqfile exists after sync"]}
+              ensure at least one empty seqfile exists after sync"]
+      :todos ["does not take into account that the edn datfile
+               might not exist"]}
     [this]
     (if-not (exists? this)
       (let [stacklist (-> (slurp (genfp context))
@@ -91,7 +106,4 @@
 
 (comment
 
-  (let [buff (new Buffer "primary")]
-    (sort (.file-list buff)))
-  
   )

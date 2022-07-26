@@ -63,11 +63,10 @@
                  (into [])
                  (acid.output/render! :vec)))
 
-        ; cypher 
+          ; cypher 
           (and (not (nil? cypher))
                (not (.offline? cypher))
-               false
-               #_there-is-something-to-sync)
+               (not (.is-empty? buffer)))
           (do
             (println "Cypher online, synchronizing event stream... \n")
             (loop [buff (.read buffer)]
