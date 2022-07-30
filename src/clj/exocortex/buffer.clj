@@ -64,7 +64,7 @@
                      :also :append :pop :prepend :sub :todo])
             (count)
             (> 0))
-      (do
+      (let [event (assoc event :timestamp (System/currentTimeMillis))]
         (spit (-> context
                   (str ".buffer."
                        (as-> (java.time.LocalDateTime/now) inst
